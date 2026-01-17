@@ -1,0 +1,30 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "mooowu-mcp"
+version = "0.1.0"
+description = "MCP server for PDF reading and intelligent highlighting"
+requires-python = ">=3.11"
+dependencies = [
+    "mcp>=1.9.0",
+    "pymupdf>=1.25.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0.0",
+    "pytest-asyncio>=0.24.0",
+]
+
+[project.scripts]
+mooowu-mcp = "mooowu_mcp.server:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/mooowu_mcp"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
