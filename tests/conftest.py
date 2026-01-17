@@ -85,7 +85,7 @@ def sample_pdf_with_image(temp_dir: Path) -> Path:
 
     img_rect = pymupdf.Rect(72, 100, 200, 200)
     pixmap = pymupdf.Pixmap(pymupdf.csRGB, pymupdf.IRect(0, 0, 128, 100), 1)
-    pixmap.set_rect(pixmap.irect, (200, 200, 200))
+    pixmap.set_rect(pixmap.irect, (200, 200, 200, 255))
     page.insert_image(img_rect, pixmap=pixmap)
 
     page.insert_text(
@@ -141,7 +141,7 @@ def sample_pdf_mixed(temp_dir: Path) -> Path:
 
     img_rect = pymupdf.Rect(72, 130, 200, 230)
     pixmap = pymupdf.Pixmap(pymupdf.csRGB, pymupdf.IRect(0, 0, 128, 100), 1)
-    pixmap.set_rect(pixmap.irect, (150, 150, 150))
+    pixmap.set_rect(pixmap.irect, (150, 150, 150, 255))
     page.insert_image(img_rect, pixmap=pixmap)
 
     page.insert_text(
