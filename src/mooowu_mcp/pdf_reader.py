@@ -1,6 +1,9 @@
 from dataclasses import dataclass
 from pathlib import Path
+import re
 import pymupdf
+
+from .parallel import PageRange, process_pages_parallel
 
 
 @dataclass
@@ -23,11 +26,15 @@ class TextBlock:
         return " ".join(span.text for span in self.spans)
 
 
-def extract_text_blocks(pdf_path: str | Path) -> list[TextBlock]:
-    doc = pymupdf.open(str(pdf_path))
+def _extract_blocks_from_page_range(page_range: PageRange) -> list[TextBlock]:
+    doc = pymupdf.open(page_range.pdf_path)
     blocks: list[TextBlock] = []
 
-    for page_num, page in enumerate(doc):
+    for page_num in range(page_range.start, page_range.end):
+        if page_num >= len(doc):
+            break
+
+        page = doc[page_num]
         page_dict = page.get_text("dict")
 
         for block in page_dict["blocks"]:
@@ -61,6 +68,18 @@ def extract_text_blocks(pdf_path: str | Path) -> list[TextBlock]:
     return blocks
 
 
+def extract_text_blocks(pdf_path: str | Path) -> list[TextBlock]:
+    doc = pymupdf.open(str(pdf_path))
+    total_pages = len(doc)
+    doc.close()
+
+    return process_pages_parallel(
+        pdf_path,
+        total_pages,
+        _extract_blocks_from_page_range,
+    )
+
+
 def extract_all_spans(pdf_path: str | Path) -> list[TextSpan]:
     blocks = extract_text_blocks(pdf_path)
     spans: list[TextSpan] = []
@@ -85,8 +104,6 @@ class Sentence:
         y1 = max(s.bbox[3] for s in self.spans)
         return (x0, y0, x1, y1)
 
-
-import re
 
 SENTENCE_BOUNDARY = re.compile(r"(?<=[.!?])\s+")
 

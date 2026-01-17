@@ -2,6 +2,7 @@ from pathlib import Path
 from dataclasses import dataclass
 
 from .pdf_reader import TextSpan, Sentence
+from .parallel import PageRange, process_pages_parallel
 import pymupdf
 
 MONOSPACE_FONTS = frozenset(
@@ -38,11 +39,15 @@ class ImageRegion:
     page_num: int
 
 
-def get_image_regions(pdf_path: str | Path) -> list[ImageRegion]:
-    doc = pymupdf.open(str(pdf_path))
+def _extract_images_from_page_range(page_range: PageRange) -> list[ImageRegion]:
+    doc = pymupdf.open(page_range.pdf_path)
     regions: list[ImageRegion] = []
 
-    for page_num, page in enumerate(doc):
+    for page_num in range(page_range.start, page_range.end):
+        if page_num >= len(doc):
+            break
+
+        page = doc[page_num]
         page_dict = page.get_text("dict")
 
         for block in page_dict["blocks"]:
@@ -55,6 +60,18 @@ def get_image_regions(pdf_path: str | Path) -> list[ImageRegion]:
 
     doc.close()
     return regions
+
+
+def get_image_regions(pdf_path: str | Path) -> list[ImageRegion]:
+    doc = pymupdf.open(str(pdf_path))
+    total_pages = len(doc)
+    doc.close()
+
+    return process_pages_parallel(
+        pdf_path,
+        total_pages,
+        _extract_images_from_page_range,
+    )
 
 
 def is_span_overlapping_image(span: TextSpan, images: list[ImageRegion]) -> bool:

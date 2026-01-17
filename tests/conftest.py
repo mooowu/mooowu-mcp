@@ -154,3 +154,40 @@ def sample_pdf_mixed(temp_dir: Path) -> Path:
     doc.save(pdf_path)
     doc.close()
     return pdf_path
+
+
+@pytest.fixture
+def sample_pdf_large(temp_dir: Path) -> Path:
+    pdf_path = temp_dir / "sample_large.pdf"
+    doc = pymupdf.open()
+
+    for i in range(50):
+        page = doc.new_page()
+        page.insert_text(
+            (72, 72),
+            f"Page {i + 1}: This document tests parallel processing efficiency.",
+            fontsize=12,
+            fontname="helv",
+        )
+        page.insert_text(
+            (72, 100),
+            f"Content block A on page {i + 1}. Important information here.",
+            fontsize=12,
+            fontname="helv",
+        )
+        page.insert_text(
+            (72, 130),
+            f"def process_page_{i}():",
+            fontsize=10,
+            fontname="cour",
+        )
+        page.insert_text(
+            (72, 160),
+            f"Content block B on page {i + 1}. More text to process.",
+            fontsize=12,
+            fontname="helv",
+        )
+
+    doc.save(pdf_path)
+    doc.close()
+    return pdf_path
