@@ -67,3 +67,59 @@ def extract_all_spans(pdf_path: str | Path) -> list[TextSpan]:
     for block in blocks:
         spans.extend(block.spans)
     return spans
+
+
+@dataclass
+class Sentence:
+    text: str
+    spans: list[TextSpan]
+    page_num: int
+
+    @property
+    def bbox(self) -> tuple[float, float, float, float]:
+        if not self.spans:
+            return (0, 0, 0, 0)
+        x0 = min(s.bbox[0] for s in self.spans)
+        y0 = min(s.bbox[1] for s in self.spans)
+        x1 = max(s.bbox[2] for s in self.spans)
+        y1 = max(s.bbox[3] for s in self.spans)
+        return (x0, y0, x1, y1)
+
+
+import re
+
+SENTENCE_BOUNDARY = re.compile(r"(?<=[.!?])\s+")
+
+
+def extract_sentences(pdf_path: str | Path) -> list[Sentence]:
+    blocks = extract_text_blocks(pdf_path)
+    sentences: list[Sentence] = []
+
+    for block in blocks:
+        if not block.spans:
+            continue
+
+        block_text = " ".join(span.text for span in block.spans)
+        sentence_texts = SENTENCE_BOUNDARY.split(block_text)
+
+        for sent_text in sentence_texts:
+            sent_text = sent_text.strip()
+            if not sent_text:
+                continue
+
+            sent_spans: list[TextSpan] = []
+            for span in block.spans:
+                if sent_text in span.text or span.text in sent_text:
+                    sent_spans.append(span)
+
+            if not sent_spans:
+                sent_spans = list(block.spans)
+
+            sentence = Sentence(
+                text=sent_text,
+                spans=sent_spans,
+                page_num=block.page_num,
+            )
+            sentences.append(sentence)
+
+    return sentences
