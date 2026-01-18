@@ -27,9 +27,29 @@ uv add mooowu-mcp
 
 ## Configuration
 
+### HTTP Server (Default)
+
+The server runs using `streamable-http` transport by default on `http://127.0.0.1:8000/mcp`.
+
+```bash
+uvx --from mooowu-mcp mooowu-mcp
+```
+
 ### Claude Desktop
 
 Add the following to your `claude_desktop_config.json`:
+
+```json
+{
+  "mcpServers": {
+    "mooowu-mcp": {
+      "url": "http://127.0.0.1:8000/mcp"
+    }
+  }
+}
+```
+
+Or run locally with stdio transport (requires modifying server.py):
 
 ```json
 {
