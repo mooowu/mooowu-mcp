@@ -1,9 +1,21 @@
 from pathlib import Path
+from collections import defaultdict
 from dataclasses import dataclass
+from typing import Any
 
 from .pdf_reader import TextSpan, Sentence
 from .parallel import PageRange, process_pages_parallel
 import pymupdf
+
+
+def _make_bbox(bbox_list: Any) -> tuple[float, float, float, float]:
+    return (
+        float(bbox_list[0]),
+        float(bbox_list[1]),
+        float(bbox_list[2]),
+        float(bbox_list[3]),
+    )
+
 
 MONOSPACE_FONTS = frozenset(
     [
@@ -48,12 +60,12 @@ def _extract_images_from_page_range(page_range: PageRange) -> list[ImageRegion]:
             break
 
         page = doc[page_num]
-        page_dict = page.get_text("dict")
+        page_dict: Any = page.get_text("dict")
 
         for block in page_dict["blocks"]:
             if block.get("type") == 1:
                 region = ImageRegion(
-                    bbox=tuple(block["bbox"]),
+                    bbox=_make_bbox(block["bbox"]),
                     page_num=page_num,
                 )
                 regions.append(region)
@@ -72,6 +84,20 @@ def get_image_regions(pdf_path: str | Path) -> list[ImageRegion]:
         total_pages,
         _extract_images_from_page_range,
     )
+
+
+def _is_span_overlapping_page_images(
+    span: TextSpan,
+    page_images: list[ImageRegion],
+) -> bool:
+    sx0, sy0, sx1, sy1 = span.bbox
+
+    for img in page_images:
+        ix0, iy0, ix1, iy1 = img.bbox
+        if sx0 < ix1 and sx1 > ix0 and sy0 < iy1 and sy1 > iy0:
+            return True
+
+    return False
 
 
 def is_span_overlapping_image(span: TextSpan, images: list[ImageRegion]) -> bool:
@@ -99,13 +125,26 @@ def filter_image_overlapping_spans(
 def filter_sentences(
     sentences: list[Sentence],
     pdf_path: str | Path,
+    images: list[ImageRegion] | None = None,
 ) -> list[Sentence]:
-    images = get_image_regions(pdf_path)
+    if images is None:
+        images = get_image_regions(pdf_path)
+
+    images_by_page: dict[int, list[ImageRegion]] = defaultdict(list)
+    for img in images:
+        images_by_page[img.page_num].append(img)
+
     filtered: list[Sentence] = []
 
     for sentence in sentences:
         valid_spans = filter_code_spans(sentence.spans)
-        valid_spans = filter_image_overlapping_spans(valid_spans, images)
+
+        page_images = images_by_page.get(sentence.page_num, [])
+        valid_spans = [
+            span
+            for span in valid_spans
+            if not _is_span_overlapping_page_images(span, page_images)
+        ]
 
         if valid_spans:
             filtered_sentence = Sentence(
