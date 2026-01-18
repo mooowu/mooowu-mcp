@@ -1,4 +1,5 @@
 from pathlib import Path
+from typing import cast
 from mcp.server.fastmcp import FastMCP
 
 from .pdf_reader import extract_sentences
@@ -31,7 +32,9 @@ def highlight_pdf(
     if not path.exists():
         raise FileNotFoundError(f"PDF file not found: {pdf_path}")
 
-    highlight_color = tuple(color) if color else (1, 1, 0)
+    highlight_color: tuple[float, float, float] = (1.0, 1.0, 0.0)
+    if color and len(color) >= 3:
+        highlight_color = (float(color[0]), float(color[1]), float(color[2]))
 
     all_sentences = extract_sentences(pdf_path)
     filtered = filter_sentences(all_sentences, pdf_path)
@@ -80,8 +83,8 @@ def analyze_pdf(pdf_path: str) -> dict:
     doc.close()
 
     sentences = extract_sentences(pdf_path)
-    filtered = filter_sentences(sentences, pdf_path)
     images = get_image_regions(pdf_path)
+    filtered = filter_sentences(sentences, pdf_path, images)
 
     code_sentence_count = len(sentences) - len(filtered)
 
@@ -96,7 +99,7 @@ def analyze_pdf(pdf_path: str) -> dict:
 
 
 def main():
-    mcp.run(transport="stdio")
+    mcp.run(transport="streamable-http")
 
 
 if __name__ == "__main__":
